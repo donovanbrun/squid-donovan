@@ -14,8 +14,8 @@ function init() {
     const container = document.querySelector("#app");
     document.body.appendChild(container);
 
-    camera = new PerspectiveCamera(73, window.innerWidth / window.innerHeight, 0.25, 200);
-    camera.position.set(50, 10, 2.7);
+    camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.25, 200);
+    camera.position.set(40, 10, 0);
 
     scene = new Scene();
     clock = new THREE.Clock();
@@ -40,13 +40,16 @@ function init() {
                     if (index == 0) var object = scene.getObjectByName("Bone");
                     else var object = scene.getObjectByName("Bone_" + index);
 
-                    bones.push(object)
+                    let tmp = []
+                    tmp.push(object)
                     object = object.children;
 
                     while (!(object === undefined || object.length == 0)) {
-                        bones.push(object[0]);
+                        tmp.push(object[0]);
                         object = object[0].children;
                     }
+
+                    bones.push(tmp)
                 }
 
                 //console.log(bones)
@@ -56,7 +59,6 @@ function init() {
                     mixer.clipAction(clip).play();
                 });
             });
-
         });
 
     // renderer
@@ -76,7 +78,6 @@ function init() {
     controls.update();
 
     window.addEventListener('resize', onWindowResize);
-
 }
 
 function onWindowResize() {
@@ -85,18 +86,26 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function move(x, boneIndex) {
+    const amplitude = .007;
+    const period = 2;
+    const phaseOffset = Math.PI / bones[0].length * 2;
+    const phase = boneIndex * phaseOffset;
+
+    return amplitude * Math.sin(2 * Math.PI * (x / period) + phase);
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
     var delta = clock.getDelta();
     if (mixer) mixer.update(delta);
-    bones.forEach(b => {
-        let r = Math.cos(Date.now() * 0.005) * (Math.random()/100) //0.01
-        b.rotation.x += r
-        b.rotation.y -= r
-        b.rotation.z += r
-        b.position.y -= r
-        b.position.x += r
+
+    let t = clock.getElapsedTime();
+    bones.forEach(bone => {
+        bone.forEach((b,i) => {
+            b.position.z += move(t,i)
+        })
     })
 
     renderer.render(scene, camera);
