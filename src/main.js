@@ -4,8 +4,29 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as THREE from "three";
 
-let camera, scene, renderer, clock, mixer;
+let camera, scene, renderer, clock, mixer, analyser, dataArray;
 var bones = [];
+let squid = null;
+
+const quaternion = new THREE.Quaternion();
+
+var audio = document.getElementById("audio");
+
+function play(e) {
+    console.log(e);
+    audio.src = e; // URL.createObjectURL(e);
+    audio.load();
+    //audio.play();
+
+    var context = new AudioContext();
+    var src = context.createMediaElementSource(audio);
+    analyser = context.createAnalyser();
+    src.connect(analyser);
+    analyser.connect(context.destination);
+    analyser.fftSize = 512;
+    var bufferLength = analyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+}
 
 init();
 animate();
@@ -13,6 +34,8 @@ animate();
 function init() {
     const container = document.querySelector("#app");
     document.body.appendChild(container);
+
+    play("/assets/audio/lucky.mp3");
 
     camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.25, 200);
     camera.position.set(40, 10, 0);
@@ -31,10 +54,10 @@ function init() {
 
             const loader = new GLTFLoader().setPath("/assets/models/");
             loader.load("pieuvre_donovan_brun_v2.glb", function (gltf) {
-                const cube = gltf.scene;
+                squid = gltf.scene;
 
-                scene.add(cube);
-                //console.log(scene)
+                scene.add(squid);
+                console.log(scene);
 
                 for (let index = 0; index < 8; index++) {
                     if (index == 0) var object = scene.getObjectByName("Bone");
@@ -95,18 +118,48 @@ function move(x, boneIndex) {
     return amplitude * Math.sin(2 * Math.PI * (x / period) + phase);
 }
 
+function tentaculeAnim() {
+    let t = clock.getElapsedTime();
+
+    bones.forEach(bone => {
+        bone.forEach((b, i) => {
+            b.position.z += move(t, i)
+        })
+    })
+}
+
+function max(arr) {
+    return arr.reduce(function (a, b) { return Math.max(a, b); })
+}
+
+function avg(arr) {
+    var total = arr.reduce(function (sum, b) { return sum + b; });
+    return (total / arr.length);
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
     var delta = clock.getDelta();
     if (mixer) mixer.update(delta);
 
-    let t = clock.getElapsedTime();
-    bones.forEach(bone => {
-        bone.forEach((b,i) => {
-            b.position.z += move(t,i)
-        })
-    })
+    //var lowerHalfArray = dataArray.slice(0, (dataArray.length / 2) - 1);
+    //var upperHalfArray = dataArray.slice((dataArray.length / 2) - 1, dataArray.length - 1);
+
+    
+    tentaculeAnim();
+
+    let h = avg(dataArray);
+    analyser.getByteFrequencyData(dataArray);
+
+    if (squid) {
+        scene.children[0].children[0].material.color.r = (h) / 255;
+        scene.children[0].children[0].material.color.g = (h - 85) / 255;
+        scene.children[0].children[0].material.color.b = (h - 170) / 255;
+        quaternion.setFromAxisAngle(new THREE.Vector3(h/10, h/10, h/10), h/255 * 0.01);
+        squid.applyQuaternion(quaternion);
+        //squid.translateX(h/255);
+    }
 
     renderer.render(scene, camera);
 }
