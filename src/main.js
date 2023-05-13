@@ -146,16 +146,13 @@ function animate() {
     //var lowerHalfArray = dataArray.slice(0, (dataArray.length / 2) - 1);
     //var upperHalfArray = dataArray.slice((dataArray.length / 2) - 1, dataArray.length - 1);
 
-    
     tentaculeAnim();
 
     let h = avg(dataArray);
     analyser.getByteFrequencyData(dataArray);
 
     if (squid) {
-        scene.children[0].children[0].material.color.r = (h) / 255;
-        scene.children[0].children[0].material.color.g = (h - 85) / 255;
-        scene.children[0].children[0].material.color.b = (h - 170) / 255;
+        scene.children[0].children[0].material.color.setHSL(h/255, 1, 0.5);
         quaternion.setFromAxisAngle(new THREE.Vector3(h/10, h/10, h/10), h/255 * 0.01);
         squid.applyQuaternion(quaternion);
         //squid.translateX(h/255);
